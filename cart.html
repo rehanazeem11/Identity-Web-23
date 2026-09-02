@@ -840,7 +840,10 @@
         <div id="cartFilledView" class="page-layout" style="display: none;">
             <div class="left-column">
                 <section class="section-block">
-                    <h2><span class="step-num">1</span> Review Your Bag</h2>
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                        <h2><span class="step-num">1</span> Review Your Bag</h2>
+                        <button type="button" onclick="if(confirm('Clear all items from your bag?')){IdentityCart.clearCart(); render();}" style="font-size: 0.8rem; color: var(--text-charcoal-light); text-decoration: underline; background: none; border: none; cursor: pointer;">Clear All</button>
+                    </div>
                     <div id="cartItemsList"></div>
                 </section>
 
