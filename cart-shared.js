@@ -278,25 +278,6 @@ window.IdentityAuth = (function () {
             saveStoredUsers(users);
         }
         setCurrentUser(demo);
-
-        // Seed demo orders if none exist
-        const orders = getAllOrders();
-        const demoOrders = orders.filter(o => o.customerEmail === demo.email);
-        if (demoOrders.length === 0) {
-            recordOrder({
-                id: 'ORD-98214',
-                date: '2026-02-10T14:30:00.000Z',
-                status: 'Delivered',
-                amount: 68500,
-                customer: demo,
-                customerEmail: demo.email,
-                items: [
-                    { id: '1', title: 'The Arc Lounge Chair', unitPrice: 42000, quantity: 1, selectedSize: 'Walnut & Boucle' },
-                    { id: '3', title: 'Solstice Travertine Coffee Table', unitPrice: 26500, quantity: 1, selectedSize: 'Roman Travertine' }
-                ]
-            });
-        }
-
         return { success: true, user: demo };
     }
 
@@ -334,38 +315,9 @@ window.IdentityAuth = (function () {
             const raw = localStorage.getItem(ORDERS_KEY);
             if (raw) {
                 const parsed = JSON.parse(raw);
-                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+                if (Array.isArray(parsed)) return parsed;
             }
-            // If empty, supply a realistic initial verified customer purchase demo
-            const sampleOrders = [
-                {
-                    id: 'ORD-948201',
-                    date: new Date(Date.now() - 3600000 * 2).toISOString(),
-                    amount: 145000,
-                    status: 'Paid / Confirmed',
-                    paymentId: 'pay_RZP8921740921',
-                    customer: {
-                        name: 'Aarav Mehra',
-                        email: 'aarav.mehra@luxuryestate.in',
-                        phone: '9876543210',
-                        address: 'Penthouse 4B, Sky Greens, Golf Course Road',
-                        city: 'Gurugram',
-                        pincode: '122002'
-                    },
-                    items: [
-                        {
-                            id: 'prod_dining_monolith',
-                            title: 'Elysian Monolith Dining Table',
-                            unitPrice: 145000,
-                            quantity: 1,
-                            selectedSize: '8-Seater (240cm)',
-                            image: 'assets/hero_dining_sculpture.png'
-                        }
-                    ]
-                }
-            ];
-            localStorage.setItem(ORDERS_KEY, JSON.stringify(sampleOrders));
-            return sampleOrders;
+            return [];
         } catch (e) {
             return [];
         }
