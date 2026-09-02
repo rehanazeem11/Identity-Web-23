@@ -6371,12 +6371,15 @@
 
                 const video = document.getElementById('brandVideoPlayer');
                 if (video && adminState.video) {
+                    if (typeof activeVideoObjectUrl !== 'undefined' && activeVideoObjectUrl) {
+                        applyVideoSourceToPlayer(video, activeVideoObjectUrl);
+                    } else if (adminState.video.url) {
+                        applyVideoSourceToPlayer(video, adminState.video.url);
+                    }
                     if (adminState.video.customPoster) {
                         video.poster = adminState.video.customPoster;
                     } else if (!adminState.video.customVideoActive && adminState.video.poster) {
                         video.poster = adminState.video.poster;
-                    } else {
-                        video.removeAttribute('poster');
                     }
                 }
 
@@ -7061,8 +7064,9 @@
                     }
                     return `
             <div class="admin-card-item">
-                <div class="admin-item-header">
+                <div class="admin-item-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
                     <strong>Item #${idx + 1}: ${p.title}</strong>
+                    <button type="button" class="admin-delete-btn" onclick="window.deleteAdminProduct('${p.id}')" style="background: rgba(231, 76, 60, 0.15); color: #e74c3c; border: 1px solid rgba(231, 76, 60, 0.4); border-radius: 6px; padding: 6px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s;"><i class="fa-regular fa-trash-can"></i> Delete Product</button>
                 </div>
                 <div class="admin-grid-3">
                     <div class="admin-form-group">
@@ -7592,11 +7596,34 @@
                 }
             };
 
-            window.deleteAdminProduct = function (id) {
-                if (confirm('Delete this product from catalogue?')) {
-                    adminState.products = adminState.products.filter(p => p.id !== id);
-                    saveAndApply();
-                    populateProductsAdminList();
+            window.deleteAdminProduct = async function (id) {
+                if (!confirm('Are you sure you want to delete this product from the catalogue?')) return;
+                try {
+                    if (typeof adminState !== 'undefined' && adminState && adminState.products) {
+                        adminState.products = adminState.products.filter(p => p.id !== id);
+                    }
+                    if (typeof products !== 'undefined' && Array.isArray(products)) {
+                        const pIdx = products.findIndex(p => p.id === id);
+                        if (pIdx > -1) products.splice(pIdx, 1);
+                    }
+
+                    if (typeof saveAndApply === 'function') saveAndApply();
+                    if (typeof populateProductsAdminList === 'function') populateProductsAdminList();
+                    if (typeof window.renderLiveProductsGrid === 'function') window.renderLiveProductsGrid();
+
+                    if (typeof showLiveToast === 'function') showLiveToast('Product deleted successfully!');
+
+                    const { backendUrl, adminKey } = (typeof window.getBackendAdminSettings === 'function')
+                        ? window.getBackendAdminSettings()
+                        : {};
+                    if (backendUrl && adminKey) {
+                        fetch(backendUrl + '/api/products/' + encodeURIComponent(id), {
+                            method: 'DELETE',
+                            headers: { 'X-Admin-Key': adminKey }
+                        }).catch(e => console.warn('Backend delete non-fatal note:', e));
+                    }
+                } catch (err) {
+                    console.error('deleteAdminProduct error:', err);
                 }
             };
             window.handleSpotlightUpload = function (input) {
@@ -9252,18 +9279,21 @@
         function applyVideoSourceToPlayer(videoEl, srcUrl) {
             if (!videoEl || !srcUrl) return;
             try {
-                // Clear any internal <source> tags to force direct src playback
                 while (videoEl.firstChild) {
                     videoEl.removeChild(videoEl.firstChild);
                 }
-                // Clear poster cover image so uploaded video frame is 100% visible
                 videoEl.removeAttribute('poster');
-                videoEl.src = srcUrl;
+                if (videoEl.src !== srcUrl) {
+                    videoEl.src = srcUrl;
+                }
                 videoEl.muted = true;
+                videoEl.defaultMuted = true;
                 videoEl.loop = true;
                 videoEl.playsInline = true;
                 videoEl.setAttribute('playsinline', '');
                 videoEl.setAttribute('webkit-playsinline', '');
+                videoEl.setAttribute('muted', '');
+                videoEl.setAttribute('autoplay', '');
                 videoEl.load();
 
                 const p = videoEl.play();
@@ -9841,21 +9871,35 @@
         });
 
         // 8. INITIALIZE BRAND VIDEO FROM STORAGE OR DEFAULTS ON LOAD
-        document.addEventListener('DOMContentLoaded', async () => {
+        async function initBrandVideoOnLoad() {
             try {
-                const stored = await window.IDENTITY_MEDIA_STORE.get('brand_video_file');
                 const siteVideo = document.getElementById('brandVideoPlayer');
-                if (stored && stored.value && siteVideo) {
+                if (!siteVideo) return;
+
+                const stored = await window.IDENTITY_MEDIA_STORE.get('brand_video_file');
+                if (stored && stored.value) {
+                    if (activeVideoObjectUrl) {
+                        try { URL.revokeObjectURL(activeVideoObjectUrl); } catch (e) {}
+                    }
                     activeVideoObjectUrl = URL.createObjectURL(stored.value);
                     applyVideoSourceToPlayer(siteVideo, activeVideoObjectUrl);
-                } else if (siteVideo) {
-                    applyVideoSourceToPlayer(siteVideo, 'https://media.w3.org/2010/05/sintel/trailer.mp4');
+                    return;
                 }
+
+                const state = typeof window.getAdminState === 'function' ? window.getAdminState() : null;
+                if (state && state.video && state.video.url) {
+                    applyVideoSourceToPlayer(siteVideo, state.video.url);
+                    return;
+                }
+
+                applyVideoSourceToPlayer(siteVideo, 'assets/brand_video.mp4');
             } catch (err) {
                 console.error('Error loading brand video from storage:', err);
             }
-        });
+        }
 
+        document.addEventListener('DOMContentLoaded', initBrandVideoOnLoad);
+        window.addEventListener('load', initBrandVideoOnLoad);
         // Hook populateAdminUI into openAdminModal
         const origOpenAdmin = window.openAdminModal;
         window.openAdminModal = function () {
