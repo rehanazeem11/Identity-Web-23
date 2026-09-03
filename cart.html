@@ -1143,10 +1143,28 @@
                     const unitPrice = Number(item.unitPrice) || 0;
                     const qty = Math.max(1, parseInt(item.quantity, 10) || 1);
                     const lineTotal = unitPrice * qty;
-                    subtotal += lineTotal;
                     const title = (item.title || 'Statement Piece').replace(/Ã‚Â®/g, '®');
                     const img = item.image || 'assets/furniture.jpg';
                     const size = item.selectedSize || 'Standard';
+
+                    if (item.unavailable) {
+                        return `
+                            <div class="cart-line-item">
+                                <div class="cart-item-img-wrap" style="opacity: 0.4;"><img src="${img}" alt="${title}" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'80\' viewBox=\'0 0 80 80\'><rect width=\'80\' height=\'80\' fill=\'%23f4f0eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23888\' font-size=\'10\'>IDENTITY</text></svg>';"></div>
+                                <div class="cart-item-info">
+                                    <h3 class="cart-item-title" style="color: #c0392b; text-decoration: line-through;">${title}</h3>
+                                    <span class="cart-item-meta" style="color: #c0392b; font-weight: 600;">Product not available</span>
+                                </div>
+                                <div class="cart-item-actions">
+                                    <button class="cart-item-remove-btn" onclick="IdentityCart.removeItem(${index}); render();">
+                                        <i class="fa-regular fa-trash-can"></i> Remove
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    subtotal += lineTotal;
                     return `
                         <div class="cart-line-item">
                             <div class="cart-item-img-wrap"><img src="${img}" alt="${title}" onerror="this.onerror=null; this.src='data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'80\' height=\'80\' viewBox=\'0 0 80 80\'><rect width=\'80\' height=\'80\' fill=\'%23f4f0eb\'/><text x=\'50%\' y=\'50%\' dominant-baseline=\'middle\' text-anchor=\'middle\' fill=\'%23888\' font-size=\'10\'>IDENTITY</text></svg>';"></div>
@@ -1257,6 +1275,10 @@
             const cart = IdentityCart.getCart();
             if (cart.length === 0) {
                 showError('Your bag is empty.');
+                return;
+            }
+            if (cart.some(function (item) { return item.unavailable; })) {
+                showError('One or more items in your bag are no longer available. Please remove them before checking out.');
                 return;
             }
 

@@ -32,7 +32,8 @@ window.IdentityCart = (function () {
                 const image = item.image || prod.image || prod.imageSrc || '';
                 const selectedSize = item.selectedSize || 'Standard';
                 const quantity = Math.max(1, parseInt(item.quantity, 10) || 1);
-                return { id, title, unitPrice: price, image, selectedSize, quantity };
+                const unavailable = item.unavailable === true;
+                return { id, title, unitPrice: price, image, selectedSize, quantity, unavailable };
             }).filter(Boolean);
         } catch (e) {
             return [];
@@ -93,6 +94,7 @@ window.IdentityCart = (function () {
 
     function getSubtotal() {
         return getCart().reduce(function (sum, item) {
+            if (item.unavailable) return sum;
             return sum + item.unitPrice * item.quantity;
         }, 0);
     }
